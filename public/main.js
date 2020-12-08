@@ -633,6 +633,7 @@ function openConfig(e){
 	  createRange(WCI);
 	  createCheckbox('Orient Vertical', 'vertical', WCI['vertical']);
 	  createCheckbox('ROS Latching', 'latching', WCI['latching']);
+	  createCheckbox('Flip Direction', 'reverse', WCI['reverse']);
 	  createconfigInput('Default/initial value', 'default', WCI['default']);
 	  createconfiglinkKeys(WCI,['Decrease','Increase']);
 	  createconfiglinkGamepadButton(WCI,['Decrease','Increase']);
@@ -746,6 +747,7 @@ function applyConfigChanges(){
       WA['name'] = document.getElementById('name').value;
       oldlatching = WA['latching'];
       WA['latching'] = document.getElementById('latching').checked;
+	  WA['reverse'] = document.getElementById('reverse').checked;
       let oldVertical = WA['vertical'];
       WA['vertical'] = document.getElementById('vertical').checked;
       WA['default'] = document.getElementById('default').value;
@@ -867,7 +869,6 @@ function applyConfigChanges(){
 		break;
 		case '_slider':
 			sendToRos(WA['topic'],{value:WA['default']},'_slider');
-			
 		break;
 	}
   }
@@ -1172,11 +1173,25 @@ function getKeyboardUpdates(){
 			let v = Number(document.getElementById(widgetArray[w].id).querySelector('#slider_ap').value);
 			v += dat;
 			document.getElementById(widgetArray[w].id).querySelector('#slider_ap').value = v;
-			sendToRos(widgetArray[w]['topic'],{value:(v>widgetArray[w].max?widgetArray[w].max:(v<widgetArray[w].min?widgetArray[w].min:v))},widgetArray[w]['type']);
+			sendToRos(widgetArray[w]['topic'],{
+				value:setSliderDirection(v>widgetArray[w].max?widgetArray[w].max:(v<widgetArray[w].min?widgetArray[w].min:v),widgetArray[w])
+			},widgetArray[w]['type']);
 		}
       }
     }
   }
+}
+
+//arr max=slider max
+//min = slider min
+//reverse = bool flip or not
+function setSliderDirection(value,arr){
+	if(arr['reverse']){
+		return parseFloat(arr['max'])+parseFloat(arr['min'])-parseFloat(value);
+	}
+	else{
+		return value;
+	}
 }
 
 let gamepad_index = 0;
@@ -1298,7 +1313,9 @@ function readGamepadLoop(){
 			let v = Number(document.getElementById(widgetArray[w].id).querySelector('#slider_ap').value);
 			v += dat;
 			document.getElementById(widgetArray[w].id).querySelector('#slider_ap').value = v;
-			sendToRos(widgetArray[w]['topic'],{value:(v>widgetArray[w].max?widgetArray[w].max:(v<widgetArray[w].min?widgetArray[w].min:v))},widgetArray[w]['type']);
+			sendToRos(widgetArray[w]['topic'],{
+				value:setSliderDirection((v>widgetArray[w].max?widgetArray[w].max:(v<widgetArray[w].min?widgetArray[w].min:v)),widgetArray[w])
+			},widgetArray[w]['type']);
 		}
       }
     }

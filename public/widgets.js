@@ -218,10 +218,12 @@ function initFunctionality(type, newWidget,thisID){
 				newWidget.querySelector('#slider_ap').className += ' vertical';
 				newWidget.querySelector('#slider_ap').style.width =(parseInt(jsw['h'])-27) + 'px';
 			}
-			newWidget.querySelector('#slider_ap').value = parseFloat(jsw['default']);
+			newWidget.querySelector('#slider_ap').value = parseFloat(setSliderDirection(jsw['default'],jsw));
 			sendToRos(jsw['topic'],{value:parseFloat(jsw['default'])},jsw['type']);
 			newWidget.querySelector('#slider_ap').oninput = function(e){
-				sendToRos(jsw['topic'],{value:e.target.value},jsw['type']);
+				sendToRos(jsw['topic'],{
+					value:setSliderDirection(e.target.value,jsw)
+				},jsw['type']);
 			};
 		}
     break;

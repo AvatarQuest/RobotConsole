@@ -452,7 +452,7 @@ button:focus {outline:0;}
 	<button onclick="closeTerminal();" class="label darken" style="font-size: 20px;background-color:#9de7fc; position:absolute; width:120px;height:55px;border:none;border-radius:5px;bottom:10px;right:10px;">Exit</button>
 </div>
 <!-- config settins panel -->
-<div id='configWindow' class="panel" style="display: none;z-index: 121;width:50%; height:70%; left:25%; top:15%; overflow-y:auto">
+<div id='configWindow' class="panel" style="display: none;z-index: 121;width:50%; height:80%; left:25%; top:10%; overflow-y:auto">
   <h1 class='settingsLabel' id='topiclabel' style="margin-top: 20px;">ROS Topic Name</h1>
   <input class="settingInput" id='topicTitle' onchange='guardTopicName(this)'></input>
   <button onclick="applyConfigChanges();removeWidgetFromScreen(elementOpenInConfig);" class="label darken" style="font-size: 20px;background-color:#fc9d9d; position:absolute; width:120px;height:55px;border:none;border-radius:5px;bottom:10px;left:10px;">Delete</button>
