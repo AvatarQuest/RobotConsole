@@ -422,7 +422,10 @@ let retrieveCam = function(){
 			resolutionStack = {};
 		}
 		
-		if(shutdownFlag) process.exit(1);
+		if(shutdownFlag){
+			releaseCameras();
+			process.exit(1);
+		}
 		setTimeout(retrieveCam,0);
 		
 	}).catch((e)=>{console.log("can't read camera " + e);});
@@ -431,11 +434,15 @@ let retrieveCam = function(){
 }
 if(cameraExists) setTimeout(retrieveCam,0);
 
+function releaseCameras(){
+	for(let i = 0; i < camArray.length; i++){
+		camArray[i].release();
+		camArray[i].read();
+		console.log('released cam',i);
+	}
+}
+
 process.on('SIGINT',()=>{
-	//for(let i = 0; i < camArray.length; i++){
-		//camArray[i].release();
-		//console.log(camArray[i]);
-		//console.log('released cam',i);
-	//}
+	releaseCameras();
 });
 
