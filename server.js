@@ -3,6 +3,7 @@ const SETTINGS_PATH = __dirname + '/settings.json';
 const HARDCODED_SETTINGS_PATH = __dirname + '/hardcoded_settings.json';
 const RESET_SOCKET_AFTER_MS = 900; //if the ping gets above this, the socket and cameras will reset
 var PORT = 3000;
+const SUPPORTED_PIXEL_FORMATS = ['JPEG','BGR3','BGR4','BGR','YUYV','GRAY8','NV12','YV12','I420'];
 
 var express = require('express');
 const rosnodejs = require('rosnodejs');
@@ -19,11 +20,10 @@ var settingsObject,hardcoded;
 var rosready = false;
 var nh, rospublishers={}, rossubscribers={};
 var socketsOpen = 0;
-var camArray = [],camJSON={"presets": [{"width":"320","height":"240","quality":100,"name":"low res"}],"camsettings":[{"preset":0,"name":"pi cam"}]};
+var camJSON={"presets": [{"width":"320","height":"240","quality":100,"name":"low res"}],"camsettings":[{"preset":0,"name":"pi cam"}]};
 var camindex = 0;
 app.use(express.static(__dirname + '/public'));
 console.log("server running on port "+ PORT);
-let index = 0;
 let cmds = {};
 var cps = [];
 var mainQuality = 90;
@@ -35,42 +35,50 @@ var resolutionStack = {};
 var shutdownFlag = false;
 
 console.log('FINDING ALL VIDEO PATHS...');
-let output = cp.execSync('ls -ltrh /dev/video*',{shell:true});
-console.log(output.toString());
-
-console.log('CONNECTING TO OPENCV...');
+let validDevices=[];
+let output = cp.execSync('v4l2-ctl --list-devices || true',{shell:true});
 output = output.toString().split(/\r?\n/);
-let devicePaths = {};
-//ignore last element because it's always empty
-//and first 3 elements because their not cameras fsr
-for(let i = 0; i < output.length-1; i++){
-  let tmp_path = output[i].split('/dev/video')[1];
-  let cam_name = cp.execSync('cat /sys/class/video4linux/video'+tmp_path+'/name',{shell:true}).toString().replace('\n','');
-  if(!cam_name.includes('bcm2835-codec')){
-	  if(!devicePaths[cam_name]){
-		   console.log('FOUND DEVCE:',cam_name,tmp_path);
-		   devicePaths[cam_name] = tmp_path;
-	  }
-	  else{
-		  if(Number(devicePaths[cam_name]) > Number(tmp_path)) devicePaths[cam_name] = tmp_path;
-	  }
-  }
+let nextIsName = true, namedDevices = {}, lastName = '';
+for(let i = 0; i < output.length; i++){
+	let r = output[i];
+	if(r == ''){
+		nextIsName = true;
+	}
+	else if(nextIsName){
+		namedDevices[r] = [];
+		lastName = r;
+		nextIsName = false;
+	}
+	else{
+		namedDevices[lastName].push(r.replace('\t',''));
+	}
 }
-let dv_keys = Object.keys(devicePaths);
-for(let i = 0; i < dv_keys.length; i++){
-	camArray[index] = new cv.VideoCapture('/dev/video'+devicePaths[dv_keys[i]]);
-	try{
-		camArray[index].set(cv.CAP_PROP_FRAME_WIDTH,640);
-		camArray[index].set(cv.CAP_PROP_FRAME_HEIGHT,480);
-		camArray[index].set(cv.CAP_PROP_FPS,25);
-		index++;
-		console.log('camera found at index '+i);
-		cps[index]=0;
-		cameraExists = true;
+console.log(namedDevices);
+console.log('CHECKING VALIDITY OF V4l2 DEVICES...');
+let dkeys = Object.keys(namedDevices);
+for(let i = 0; i < dkeys.length; i++){
+	let devices = namedDevices[dkeys[i]];
+	if(!dkeys[i].includes('bcm2835-codec')){	//make sure camera is real
+		for(let d = 0; d < devices.length; d++){
+			let output = cp.execSync('v4l2-ctl -d '+devices[d]+' --get-fmt-video || true',{shell:true}).toString().split(/\r?\n/);
+			if(!output[0].includes('Invalid Argument')){ //make sure v4l pixel format is valid
+				validDevices.push(devices[d]);
+				break;
+			}
+		}
 	}
-	catch(e){
-		console.log(e);
-	}
+}
+console.log('(CONNECTING TO OPENCV) VALID DEVICES',validDevices);
+let camArray = [], index = 0;
+for(let i = 0; i < validDevices.length; i++){
+	camArray[index] = new cv.VideoCapture(validDevices[i]);
+	camArray[index].set(cv.CAP_PROP_FRAME_WIDTH,640);
+	camArray[index].set(cv.CAP_PROP_FRAME_HEIGHT,480);
+	camArray[index].set(cv.CAP_PROP_FPS,25);
+	index++;
+	console.log('camera found at index '+i);
+	cps[index]=0;
+	cameraExists = true;
 }
 console.log('total of ' + camArray.length + ' cameras found');
 
